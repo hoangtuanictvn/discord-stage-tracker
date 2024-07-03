@@ -6,6 +6,8 @@ from discord import app_commands
 from discord.ext import commands
 from datetime import datetime
 from gsheet.gsheet import GoogleSheet
+from dotenv import load_dotenv
+load_dotenv()
 
 
 TABLE_RANGE = 'A1:D1'
@@ -14,6 +16,7 @@ gs = GoogleSheet()
 intents = discord.Intents.default()
 intents.voice_states = True
 bot = commands.Bot(command_prefix="/", intents=intents)
+authorized_users = os.getenv('AUTHORIZED_USERS').strip().split(',')
 
 
 @bot.event
@@ -28,34 +31,54 @@ async def on_ready():
 
 @bot.tree.command(name="get_bot_email", description="Get Bot's Email")
 async def get_bot_email(interaction: discord.Interaction):
-    await interaction.response.send_message(f'Bot email: {gs.get_client_email()}')
-
+    user = interaction.user
+    if not str(user.id) in authorized_users:
+        await user.send("You are not authorized to use this command.")
+        return
+    
+    await user.send(f'Bot email: {gs.get_client_email()}')
+        
 
 @bot.tree.command(name="get_sheet", description="Get Sheet's Link")
 async def get_sheet(interaction: discord.Interaction):
-    await interaction.response.send_message(f'Sheet URL: {gs.url}')
+    user = interaction.user
+    if not str(user.id) in authorized_users:
+        await user.send("You are not authorized to use this command.")
+        return
+    
+    await user.send(f'Sheet URL: {gs.url}')
 
 
 @bot.tree.command(name='update_sheet', description="Update Sheet's Link")
 @app_commands.describe(url='Sheet URL')
 async def update_sheet(interaction: discord.Interaction, url: str):
+    user = interaction.user
+    if not str(user.id) in authorized_users:
+        await user.send("You are not authorized to use this command.")
+        return
+
     try:
         gs.update_url(url)
-        await interaction.response.send_message(f'Sheet was updated successfully: {url}')
+        await user.send(f'Sheet was updated successfully: {url}')
     except Exception as e:
         print(f'ERROR === bot.py -- 43: {e}')
-        await interaction.response.send_message(f'ERROR: {e}')
+        await user.send(f'ERROR: {e}')
 
         
 @bot.tree.command(name='share_sheet', description="Share sheet with a specific email")
 @app_commands.describe(email='Email')
 async def share_sheet(interaction: discord.Interaction, email: str):
+    user = interaction.user
+    if not str(user.id) in authorized_users:
+        await user.send("You are not authorized to use this command.")
+        return
+
     try:
         gs.share_writer(email)
-        await interaction.response.send_message(f'Sheet was shared successfully with {email}: {gs.url}')
+        await user.send(f'Sheet was shared successfully with {email}: {gs.url}')
     except Exception as e:
         print(f'ERROR === bot.py -- 52: {e}')
-        await interaction.response.send_message(f'ERROR: {e}')
+        await user.send(f'ERROR: {e}')
 
 
 @bot.event
